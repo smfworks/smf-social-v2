@@ -5,7 +5,7 @@ from typing import Optional
 
 # Base directories
 BASE_DIR = Path(__file__).parent.parent
-DATA_DIR = Path(os.getenv("DATA_DIR", "/data"))
+DATA_DIR = Path(os.getenv("DATA_DIR", str(BASE_DIR / "data")))
 
 # Ensure data directory exists
 DATA_DIR.mkdir(parents=True, exist_ok=True)
