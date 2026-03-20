@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Link2, CheckCircle, XCircle, Loader2, AlertCircle } from 'lucide-react'
 import { api } from '../api/client'
+import { OAuthAppConfig } from '../components/OAuthAppConfig'
 
 interface Integration {
   id: string
@@ -224,6 +225,23 @@ export function Integrations() {
           )
         })}
       </div>
+
+      {/* OAuth Configuration Forms - Show when test mode is OFF */}
+      {!testMode && (
+        <div className="space-y-4">
+          <h3 className="text-lg font-semibold" style={{ color: '#e8eaed' }}>
+            OAuth App Configuration
+          </h3>
+          <p className="text-sm" style={{ color: '#9ca3af' }}>
+            Enter your OAuth credentials for each platform you want to connect.
+          </p>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <OAuthAppConfig platform="pinterest" />
+            <OAuthAppConfig platform="linkedin" />
+            <OAuthAppConfig platform="x" />
+          </div>
+        </div>
+      )}
 
       <div className="bg-blue-50 border border-blue-200 rounded-lg p-6">
         <h3 className="font-semibold text-blue-900 mb-2">Setup Required</h3>
