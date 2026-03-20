@@ -45,7 +45,7 @@ export function Settings() {
             <option value="America/New_York">Eastern Time (ET)</option>
             <option value="America/Chicago">Central Time (CT)</option>
             <option value="America/Denver">Mountain Time (MT)</option>
-            <option value="America/Los_Angeles">Pacific Time (PT)>/option>
+            <option value="America/Los_Angeles">Pacific Time (PT)</option>
             <option value="UTC">UTC</option>
           </select>
         </div>
