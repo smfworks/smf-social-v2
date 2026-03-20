@@ -31,8 +31,8 @@ export const api = {
   getIntegrations: () =>
     fetchClient('/integrations?tenant_id=tenant-1'),
   
-  connectPlatform: (platform: string) =>
-    fetchClient(`/auth/${platform}/connect?tenant_id=tenant-1`),
+  connectPlatform: (platform: string, test: boolean = true) =>
+    fetchClient(`/auth/${platform}/connect?tenant_id=tenant-1&test=${test}`),
   
   disconnectIntegration: (id: string) =>
     fetchClient(`/integrations/${id}?tenant_id=tenant-1`, {

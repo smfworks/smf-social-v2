@@ -21,6 +21,7 @@ export function Integrations() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [connecting, setConnecting] = useState<string | null>(null)
+  const [testMode, setTestMode] = useState(true) // Default to test mode
 
   useEffect(() => {
     loadIntegrations()
@@ -42,13 +43,47 @@ export function Integrations() {
     setConnecting(platform)
     
     try {
-      const data = await api.connectPlatform(platform)
-      // Redirect to OAuth provider
-      window.location.href = data.authorization_url
+      // Use test mode by default for development
+      const data = await api.connectPlatform(platform, testMode)
+      
+      if (data.mock_mode) {
+        console.log('🧪 Mock OAuth mode:', data.note)
+        // In test mode, simulate the OAuth redirect
+        // Parse the state from the URL
+        const url = new URL(data.authorization_url)
+        const state = url.searchParams.get('state')
+        
+        // Simulate user authorization
+        setTimeout(() => {
+          const mockCode = `test-code-${platform}-${Date.now()}`
+          handleMockCallback(platform, mockCode, state || '')
+        }, 2000)
+      } else {
+        // Real OAuth - redirect to provider
+        window.location.href = data.authorization_url
+      }
     } catch (error: any) {
       setError(error.message || 'Failed to start OAuth')
     } finally {
       setConnecting(null)
+    }
+  }
+  
+  const handleMockCallback = async (platform: string, code: string, state: string) => {
+    try {
+      // Call the callback endpoint with mock code
+      const response = await fetch(
+        `/api/auth/${platform}/callback?code=${code}&state=${state}&tenant_id=tenant-1`
+      )
+      const data = await response.json()
+      
+      if (data.success) {
+        setError('') // Clear any errors
+        loadIntegrations() // Refresh the list
+        alert(`✅ Test OAuth successful! Connected as ${data.account}`)
+      }
+    } catch (error: any) {
+      setError('Mock callback failed: ' + error.message)
     }
   }
 
@@ -94,6 +129,23 @@ export function Integrations() {
         </div>
       )}
 
+      {/* Test Mode Toggle */}
+      <div className="flex items-center gap-3 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+        <span className="text-sm font-medium text-yellow-800">Test Mode:</span>
+        <label className="relative inline-flex items-center cursor-pointer">
+          <input
+            type="checkbox"
+            checked={testMode}
+            onChange={(e) => setTestMode(e.target.checked)}
+            className="sr-only peer"
+          />
+          <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+        </label>
+        <span className="text-sm text-yellow-700">
+          {testMode ? 'Using mock OAuth (no real credentials needed)' : 'Using real OAuth'}
+        </span>
+      </div>
+
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {PLATFORMS.map((platform) => {
           const connected = isConnected(platform.id)
@@ -131,10 +183,16 @@ export function Integrations() {
                   <button
                     onClick={() => connectPlatform(platform.id)}
                     disabled={connecting === platform.id}
-                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 text-sm font-medium"
+                    className={`px-4 py-2 rounded-lg disabled:opacity-50 text-sm font-medium ${
+                      testMode 
+                        ? 'bg-yellow-500 text-white hover:bg-yellow-600' 
+                        : 'bg-blue-600 text-white hover:bg-blue-700'
+                    }`}
                   >
                     {connecting === platform.id ? (
                       <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : testMode ? (
+                      'Connect (Test)'
                     ) : (
                       'Connect'
                     )}
