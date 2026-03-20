@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Link2, CheckCircle, XCircle, Loader2, AlertCircle } from 'lucide-react'
+import { CheckCircle, Loader2, AlertCircle } from 'lucide-react'
 import { api } from '../api/client'
 import { OAuthAppConfig } from '../components/OAuthAppConfig'
 import { ManualTokenEntry } from '../components/ManualTokenEntry'
