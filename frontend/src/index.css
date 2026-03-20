@@ -2,50 +2,113 @@
 @tailwind components;
 @tailwind utilities;
 
-/* SMF Works Brand Colors & Global Styles */
+/* SMF Works Website Styling - Dark Theme with Forge Aesthetic */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
 :root {
-  --smf-navy: #001F3F;
-  --smf-cyan: #00D4FF;
-  --smf-orange: #FF6B00;
-  --smf-white: #FFFFFF;
-  --smf-gray: #F8FAFC;
+  /* SMF Works Brand Colors */
+  --smf-navy: #0a1628;
+  --smf-navy-light: #1a2a3a;
+  --smf-cyan: #00d4ff;
+  --smf-cyan-glow: rgba(0, 212, 255, 0.3);
+  --smf-orange: #ff6b35;
+  --smf-text: #e8eaed;
+  --smf-text-muted: #9ca3af;
+  --smf-border: #2d3748;
 }
 
-/* Base styles */
+/* Base styles - Dark theme */
 body {
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-  background-color: #f8fafc;
+  background-color: var(--smf-navy);
+  color: var(--smf-text);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Forge glow effect */
+.forge-glow {
+  box-shadow: 0 0 20px var(--smf-cyan-glow), 0 0 40px var(--smf-cyan-glow);
+}
+
+/* Gradient text */
+.gradient-text {
+  background: linear-gradient(135deg, var(--smf-cyan) 0%, var(--smf-orange) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
 }
 
 /* Custom button styles */
 .btn-primary {
-  @apply bg-[#001F3F] text-white px-6 py-2 rounded-lg font-medium transition-all;
+  @apply px-6 py-3 rounded-lg font-medium transition-all duration-300;
+  background: linear-gradient(135deg, var(--smf-cyan) 0%, #0099cc 100%);
+  color: var(--smf-navy);
+  border: none;
 }
 
 .btn-primary:hover {
-  @apply bg-[#003366] shadow-lg;
-  box-shadow: 0 4px 12px rgba(0, 31, 63, 0.3);
+  @apply transform scale-105;
+  box-shadow: 0 0 30px var(--smf-cyan-glow);
 }
 
 .btn-secondary {
-  @apply bg-[#00D4FF] text-[#001F3F] px-6 py-2 rounded-lg font-medium transition-all;
+  @apply px-6 py-3 rounded-lg font-medium transition-all duration-300 border-2;
+  background: transparent;
+  border-color: var(--smf-cyan);
+  color: var(--smf-cyan);
 }
 
 .btn-secondary:hover {
-  @apply shadow-lg;
-  box-shadow: 0 4px 12px rgba(0, 212, 255, 0.3);
+  background: var(--smf-cyan);
+  color: var(--smf-navy);
+  box-shadow: 0 0 20px var(--smf-cyan-glow);
 }
 
-/* Card styles */
+/* Card styles - Glassmorphism */
 .card {
-  @apply bg-white rounded-xl border border-gray-100 shadow-sm transition-shadow;
+  @apply rounded-xl border backdrop-blur-sm transition-all duration-300;
+  background: rgba(26, 42, 58, 0.6);
+  border-color: var(--smf-border);
 }
 
 .card:hover {
-  @apply shadow-md;
+  @apply transform -translate-y-1;
+  border-color: var(--smf-cyan);
+  box-shadow: 0 10px 40px rgba(0, 212, 255, 0.1);
+}
+
+/* Input styles */
+input, select, textarea {
+  @apply rounded-lg px-4 py-3 w-full transition-all duration-300;
+  background: var(--smf-navy-light);
+  border: 1px solid var(--smf-border);
+  color: var(--smf-text);
+}
+
+input:focus, select:focus, textarea:focus {
+  outline: none;
+  border-color: var(--smf-cyan);
+  box-shadow: 0 0 0 3px var(--smf-cyan-glow);
+}
+
+input::placeholder, textarea::placeholder {
+  color: var(--smf-text-muted);
 }
 
 /* Animations */
+@keyframes pulse-glow {
+  0%, 100% {
+    box-shadow: 0 0 20px var(--smf-cyan-glow);
+  }
+  50% {
+    box-shadow: 0 0 40px var(--smf-cyan-glow), 0 0 60px rgba(0, 212, 255, 0.2);
+  }
+}
+
+.animate-pulse-glow {
+  animation: pulse-glow 2s ease-in-out infinite;
+}
+
 @keyframes spin {
   to {
     transform: rotate(360deg);
@@ -56,33 +119,27 @@ body {
   animation: spin 1s linear infinite;
 }
 
-/* Gradient backgrounds */
-.gradient-hero {
-  background: linear-gradient(135deg, #001F3F 0%, #003366 100%);
-}
-
-/* Focus states */
-input:focus, select:focus, textarea:focus {
-  outline: none;
-  border-color: #00D4FF;
-  box-shadow: 0 0 0 3px rgba(0, 212, 255, 0.1);
-}
-
 /* Scrollbar styling */
 ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 10px;
+  height: 10px;
 }
 
 ::-webkit-scrollbar-track {
-  background: #f1f5f9;
+  background: var(--smf-navy);
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #001F3F;
-  border-radius: 4px;
+  background: var(--smf-border);
+  border-radius: 5px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #00D4FF;
+  background: var(--smf-cyan);
+}
+
+/* Selection color */
+::selection {
+  background: var(--smf-cyan);
+  color: var(--smf-navy);
 }
