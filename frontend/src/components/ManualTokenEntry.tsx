@@ -6,6 +6,7 @@ export function ManualTokenEntry({ platform }: { platform: string }) {
   const [showToken, setShowToken] = useState(false)
   const [saved, setSaved] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
