@@ -2,9 +2,47 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Custom styles */
+/* SMF Works Brand Colors & Global Styles */
+:root {
+  --smf-navy: #001F3F;
+  --smf-cyan: #00D4FF;
+  --smf-orange: #FF6B00;
+  --smf-white: #FFFFFF;
+  --smf-gray: #F8FAFC;
+}
+
+/* Base styles */
 body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  background-color: #f8fafc;
+}
+
+/* Custom button styles */
+.btn-primary {
+  @apply bg-[#001F3F] text-white px-6 py-2 rounded-lg font-medium transition-all;
+}
+
+.btn-primary:hover {
+  @apply bg-[#003366] shadow-lg;
+  box-shadow: 0 4px 12px rgba(0, 31, 63, 0.3);
+}
+
+.btn-secondary {
+  @apply bg-[#00D4FF] text-[#001F3F] px-6 py-2 rounded-lg font-medium transition-all;
+}
+
+.btn-secondary:hover {
+  @apply shadow-lg;
+  box-shadow: 0 4px 12px rgba(0, 212, 255, 0.3);
+}
+
+/* Card styles */
+.card {
+  @apply bg-white rounded-xl border border-gray-100 shadow-sm transition-shadow;
+}
+
+.card:hover {
+  @apply shadow-md;
 }
 
 /* Animations */
@@ -16,4 +54,35 @@ body {
 
 .animate-spin {
   animation: spin 1s linear infinite;
+}
+
+/* Gradient backgrounds */
+.gradient-hero {
+  background: linear-gradient(135deg, #001F3F 0%, #003366 100%);
+}
+
+/* Focus states */
+input:focus, select:focus, textarea:focus {
+  outline: none;
+  border-color: #00D4FF;
+  box-shadow: 0 0 0 3px rgba(0, 212, 255, 0.1);
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f5f9;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #001F3F;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #00D4FF;
 }
