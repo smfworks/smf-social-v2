@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
-import { Link2, CheckCircle, XCircle, Loader2 } from 'lucide-react'
+import { Link2, CheckCircle, XCircle, Loader2, AlertCircle } from 'lucide-react'
+import { api } from '../api/client'
 
 interface Integration {
   id: string
@@ -17,31 +18,35 @@ const PLATFORMS = [
 
 export function Integrations() {
   const [integrations, setIntegrations] = useState<Integration[]>([])
-  const [loading, setLoading] = useState(false)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
   const [connecting, setConnecting] = useState<string | null>(null)
 
   useEffect(() => {
-    // TODO: Fetch from API
-    // fetch('/api/integrations?tenant_id=xxx').then(...)
-    
-    // Simulated data
-    setIntegrations([
-      { id: '1', platform: 'pinterest', account_name: '@michaelgannotti', is_active: true },
-    ])
+    loadIntegrations()
   }, [])
+
+  const loadIntegrations = async () => {
+    try {
+      setLoading(true)
+      const data = await api.getIntegrations()
+      setIntegrations(data)
+    } catch (err: any) {
+      setError(err.message || 'Failed to load integrations')
+    } finally {
+      setLoading(false)
+    }
+  }
 
   const connectPlatform = async (platform: string) => {
     setConnecting(platform)
     
     try {
-      // Start OAuth flow
-      const response = await fetch(`/api/auth/${platform}/connect?tenant_id=tenant-1`)
-      const data = await response.json()
-      
-      // Open OAuth window
+      const data = await api.connectPlatform(platform)
+      // Redirect to OAuth provider
       window.location.href = data.authorization_url
-    } catch (error) {
-      console.error('Failed to connect:', error)
+    } catch (error: any) {
+      setError(error.message || 'Failed to start OAuth')
     } finally {
       setConnecting(null)
     }
@@ -50,8 +55,12 @@ export function Integrations() {
   const disconnect = async (integrationId: string) => {
     if (!confirm('Disconnect this account?')) return
     
-    // TODO: API call
-    setIntegrations(integrations.filter(i => i.id !== integrationId))
+    try {
+      await api.disconnectIntegration(integrationId)
+      setIntegrations(integrations.filter(i => i.id !== integrationId))
+    } catch (error: any) {
+      setError(error.message || 'Failed to disconnect')
+    }
   }
 
   const isConnected = (platform: string) => {
@@ -62,12 +71,28 @@ export function Integrations() {
     return integrations.find(i => i.platform === platform)
   }
 
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+      </div>
+    )
+  }
+
   return (
     <div className="space-y-8">
       <div>
         <h1 className="text-2xl font-bold text-gray-900">Integrations</h1>
         <p className="text-gray-600 mt-1">Connect your social media accounts</p>
       </div>
+
+      {error && (
+        <div className="p-4 bg-red-50 border border-red-200 rounded-lg flex items-center gap-2 text-red-700">
+          <AlertCircle className="w-5 h-5" />
+          {error}
+          <button onClick={() => setError('')} className="ml-auto text-sm hover:underline">Dismiss</button>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {PLATFORMS.map((platform) => {
@@ -142,7 +167,6 @@ export function Integrations() {
         })}
       </div>
 
-      {/* Setup Instructions */}
       <div className="bg-blue-50 border border-blue-200 rounded-lg p-6">
         <h3 className="font-semibold text-blue-900 mb-2">Setup Required</h3>
         <p className="text-blue-800 text-sm mb-4">
