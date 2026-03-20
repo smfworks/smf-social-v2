@@ -1,11 +1,12 @@
 """Integration management routes."""
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
+from datetime import datetime
 from typing import List
 
 from core.database import get_db
-from core.security import decrypt_token
-from models.sqlite_database import Integration, Tenant
+from core.security import decrypt_token, encrypt_token
+from models.sqlite_database import Integration, OAuthApp
 
 router = APIRouter(prefix="/integrations", tags=["integrations"])
 
@@ -32,6 +33,59 @@ def list_integrations(
         }
         for integration in integrations
     ]
+
+@router.post("/manual-token")
+def manual_token_entry(
+    platform: str,
+    tenant_id: str,
+    access_token: str,
+    db: Session = Depends(get_db)
+):
+    """Add integration via manual token entry (for testing)."""
+    
+    # Get or create OAuth app
+    oauth_app = db.query(OAuthApp).filter(
+        OAuthApp.tenant_id == tenant_id,
+        OAuthApp.platform == platform
+    ).first()
+    
+    if not oauth_app:
+        oauth_app = OAuthApp(
+            tenant_id=tenant_id,
+            platform=platform,
+            client_id=f"manual-{platform}",
+            client_secret="manual-secret",
+            redirect_uri="http://localhost/callback",
+            app_name=f"Manual {platform.title()}"
+        )
+        db.add(oauth_app)
+        db.commit()
+    
+    # Encrypt token
+    encrypted_token = encrypt_token(access_token)
+    
+    # Create integration
+    integration = Integration(
+        tenant_id=tenant_id,
+        oauth_app_id=oauth_app.id,
+        platform=platform,
+        account_name=f"@{platform}-manual",
+        account_id=f"manual-{platform}-id",
+        access_token=encrypted_token,
+        token_type="Bearer",
+        is_active=True,
+        created_at=datetime.utcnow(),
+        last_used_at=datetime.utcnow()
+    )
+    
+    db.add(integration)
+    db.commit()
+    
+    return {
+        "success": True,
+        "message": f"{platform.title()} integration created with manual token",
+        "integration_id": integration.id
+    }
 
 @router.delete("/{integration_id}")
 def disconnect_integration(
