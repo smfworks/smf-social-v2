@@ -7,7 +7,7 @@ from typing import Optional
 import secrets
 
 from core.database import get_db
-from core.security import verify_token, encrypt_token
+from core.security import decode_token, encrypt_token
 from core.test_oauth import (
     is_test_mode, 
     generate_test_authorization_url, 
