@@ -11,9 +11,13 @@ export function ManualTokenEntry({ platform }: { platform: string }) {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setSaving(true)
+    setError('')
+    setSaved(false)
 
     try {
-      // Save token directly (bypass OAuth flow)
+      console.log('Saving token for platform:', platform)
+      console.log('Token length:', token.length)
+      
       const response = await fetch('/api/integrations/manual-token', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -24,15 +28,30 @@ export function ManualTokenEntry({ platform }: { platform: string }) {
         }),
       })
 
+      console.log('Response status:', response.status)
+      
+      let data
+      try {
+        data = await response.json()
+      } catch (parseError) {
+        console.error('Failed to parse response:', parseError)
+        const text = await response.text()
+        console.log('Raw response:', text)
+        throw new Error('Invalid response from server')
+      }
+      
+      console.log('Response data:', data)
+
       if (response.ok) {
         setSaved(true)
-        setTimeout(() => {
-          setSaved(false)
-          setToken('')
-        }, 3000)
+        setToken('')
+        setTimeout(() => setSaved(false), 5000)
+      } else {
+        setError(data.detail || data.message || `Error ${response.status}: Failed to save token`)
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to save token:', error)
+      setError(error.message || 'Network error - check console')
     } finally {
       setSaving(false)
     }
@@ -119,6 +138,12 @@ export function ManualTokenEntry({ platform }: { platform: string }) {
             </span>
           )}
         </div>
+
+        {error && (
+          <div className="mt-4 p-3 rounded-lg" style={{ background: 'rgba(239, 68, 68, 0.1)', border: '1px solid #ef4444' }}>
+            <p className="text-sm" style={{ color: '#ef4444' }}>{error}</p>
+          </div>
+        )}
       </form>
     </div>
   )
