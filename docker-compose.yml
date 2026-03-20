@@ -1,0 +1,74 @@
+version: '3.8'
+
+services:
+  # Backend API
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: smf-social-backend
+    restart: unless-stopped
+    environment:
+      - DATA_DIR=/data
+      - DATABASE_URL=sqlite:////data/smf_social.db
+      - JWT_SECRET=${JWT_SECRET:-change-me-in-production}
+      - ENCRYPTION_KEY=${ENCRYPTION_KEY:-change-me-in-production-32-char-key!!}
+      - FRONTEND_URL=${FRONTEND_URL:-http://localhost}
+      - API_HOST=0.0.0.0
+      - API_PORT=8000
+      - DEBUG=${DEBUG:-false}
+    volumes:
+      - smf-data:/data
+    networks:
+      - smf-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Frontend (served by nginx)
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: smf-social-frontend
+    restart: unless-stopped
+    environment:
+      - VITE_API_URL=/api
+    networks:
+      - smf-network
+    depends_on:
+      - backend
+
+  # Nginx reverse proxy
+  nginx:
+    image: nginx:alpine
+    container_name: smf-social-nginx
+    restart: unless-stopped
+    ports:
+      - "${PORT:-80}:80"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - nginx-cache:/var/cache/nginx
+    depends_on:
+      - backend
+      - frontend
+    networks:
+      - smf-network
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+volumes:
+  smf-data:
+    driver: local
+  nginx-cache:
+    driver: local
+
+networks:
+  smf-network:
+    driver: bridge
