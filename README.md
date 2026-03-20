@@ -45,12 +45,12 @@ smf-social-v2/
 
 | Layer | Technology | Purpose |
 |-------|------------|---------|
-| Backend | FastAPI (Python) | REST API, async handlers |
-| Database | PostgreSQL | Multi-tenant data |
-| Queue | APScheduler | Job scheduling (embedded) |
+| Backend | FastAPI (Python 3.12) | REST API, async handlers |
+| Database | SQLite | Single-tenant data (no separate service needed) |
+| Queue | APScheduler | Job scheduling (embedded, free) |
 | Frontend | React + Vite | Admin UI |
 | Auth | OAuth 2.0 + OAuth 1.0a | Platform connections |
-| Cache | Redis (optional) | Rate limiting, sessions |
+| Container | Docker + Compose | Deployment and isolation |
 
 ---
 
@@ -191,38 +191,72 @@ POST   /scheduler/resume      # Resume processing
 
 ---
 
-## Setup Instructions
+## Quick Start (Docker - Recommended)
 
-### Development Environment
+Docker is the **recommended** way to run SMF Social v2. It handles all dependencies automatically and works identically on all platforms.
+
+### Requirements
+- Docker 20.10+
+- Docker Compose 2.0+
+- Git
+
+### 1. Clone Repository
 
 ```bash
-# Clone
-cd ~/projects/smf-social-v2
-
-# Backend
-cd backend
-python -m venv venv
-source venv/bin/activate
-pip install -r requirements.txt
-
-# Frontend
-cd ../frontend
-npm install
-npm run dev
-
-# Database (Docker)
-docker-compose up -d postgres redis
-
-# Run migrations
-alembic upgrade head
-
-# Start backend
-uvicorn main:app --reload
+git clone https://github.com/smfworks/smf-social-v2.git
+cd smf-social-v2
 ```
 
-### Production Deployment
+### 2. Configure Environment
 
-See [[Deployment Guide]] (TODO)
+```bash
+cp .env.example .env
+# Edit .env with your settings (optional for testing)
+```
+
+### 3. Start with Docker Compose
+
+```bash
+docker-compose up -d --build
+```
+
+This starts 3 containers:
+- **backend** (port 8000) - FastAPI + SQLite
+- **frontend** (port 80) - React + nginx
+- **nginx** - Reverse proxy
+
+### 4. Access the App
+
+Open your browser: **http://localhost**
+
+### 5. Run Tests
+
+```bash
+# Automated OAuth test
+./scripts/quick-test.sh
+
+# Check logs
+docker-compose logs -f backend
+```
+
+### 6. Stop
+
+```bash
+docker-compose down
+```
+
+---
+
+## Alternative: Direct Install (Not Recommended)
+
+Only use direct install if Docker is not available. Requires:
+- Python 3.11+
+- Node.js 18+
+- SQLite
+
+See [Direct Install Guide](docs/Direct Install.md) for details.
+
+**Note:** Direct install has platform-specific issues (e.g., PEP 668 on Ubuntu 24.04). Docker avoids these problems.
 
 ---
 
