@@ -35,7 +35,7 @@ class OAuthApp(Base):
     id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     tenant_id = Column(String(36), ForeignKey('tenants.id'), nullable=False)
     
-    # Platform identifier: 'x', 'linkedin', 'pinterest', etc.
+    # Platform identifier: 'x', 'linkedin', 'instagram', 'facebook', 'tiktok'
     platform = Column(String(50), nullable=False)
     
     # OAuth credentials

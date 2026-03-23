@@ -144,32 +144,28 @@ def publish_scheduled_post(post_id: str):
         # Decrypt token
         access_token = decrypt_token(integration.access_token)
         
-        # Get provider
-        from providers.pinterest import PinterestProvider
-        from providers.linkedin import LinkedInProvider
-        
+        # Get provider based on platform
+        from api.posts import get_provider_for_platform
+        from core.security import decrypt_token
+
         oauth_app = integration.oauth_app
         credentials = {
-            'client_id': oauth_app.client_id,
-            'client_secret': oauth_app.client_secret,
-            'redirect_uri': oauth_app.redirect_uri
+            'client_id': oauth_app.client_id if oauth_app else None,
+            'client_secret': oauth_app.client_secret if oauth_app else None,
+            'redirect_uri': oauth_app.redirect_uri if oauth_app else None,
         }
-        
+
         # Post to platform
-        if integration.platform == 'pinterest':
-            provider = PinterestProvider(credentials)
+        try:
+            ProviderClass = get_provider_for_platform(integration.platform)
+            provider = ProviderClass(credentials)
             result = provider.post(
                 content=post.content,
                 access_token=access_token,
-                media_urls=post.media_urls,
-                board_id=integration.settings.get('board_id') if integration.settings else None
+                media_urls=post.media_urls
             )
-        elif integration.platform == 'linkedin':
-            provider = LinkedInProvider(credentials)
-            # LinkedIn requires UGC API implementation
-            raise NotImplementedError("LinkedIn posting not yet implemented")
-        else:
-            raise NotImplementedError(f"Platform {integration.platform} not implemented")
+        except NotImplementedError as e:
+            raise Exception(f"Platform {integration.platform} posting not yet implemented: {e}")
         
         # Update post
         post.status = 'published'

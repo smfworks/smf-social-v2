@@ -21,17 +21,23 @@ export function Posts() {
       {
         id: '1',
         content: 'Check out our latest blog post on AI automation!',
-        platform: 'pinterest',
+        platform: 'linkedin',
         status: 'scheduled',
         scheduled_for: '2026-03-25T09:00:00Z',
       },
       {
         id: '2',
         content: 'How to leverage AI for small business growth',
-        platform: 'linkedin',
+        platform: 'x',
         status: 'published',
         published_at: '2026-03-20T10:00:00Z',
-        platform_url: 'https://linkedin.com/post/123',
+        platform_url: 'https://x.com/post/123',
+      },
+      {
+        id: '3',
+        content: 'Behind the scenes at SMF Works HQ',
+        platform: 'instagram',
+        status: 'draft',
       },
     ])
   }, [])
