@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Send, Calendar, Image as ImageIcon, PenTool, Hash, Clock } from 'lucide-react'
+import { Send, Image as ImageIcon, PenTool, Hash, Clock } from 'lucide-react'
 
 interface Integration {
   id: string

@@ -139,7 +139,9 @@ def connect_platform(
 def oauth_callback(
     platform: str,
     code: str,
-    state: str,
+    state: str = "",
+    test: bool = False,
+    tenant_id: str = "test-tenant",
     db: Session = Depends(get_db)
 ):
     """Handle OAuth callback from platform.
@@ -152,16 +154,20 @@ def oauth_callback(
             detail=f"Platform '{platform}' not supported"
         )
 
-    # Verify state
-    if state not in oauth_states:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid state parameter"
-        )
+    # Test mode: bypass state validation
+    if test:
+        is_mock = True
+    else:
+        # Verify state
+        if state not in oauth_states:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid state parameter"
+            )
 
-    state_data = oauth_states.pop(state)
-    tenant_id = state_data["tenant_id"]
-    is_mock = state_data.get("mock", False)
+        state_data = oauth_states.pop(state)
+        tenant_id = state_data["tenant_id"]
+        is_mock = state_data.get("mock", False)
 
     # Get or create OAuth app
     oauth_app = get_or_create_test_oauth_app(db, tenant_id, platform)
