@@ -1,355 +1,245 @@
-"""X (Twitter) provider implementation.
+"""X (Twitter) provider implementation using tweepy.
 
-X uses OAuth 1.0a which is significantly more complex than OAuth 2.0.
-Docs: https://developer.twitter.com/en/docs/authentication/oauth-1-0a
+OAuth 1.0a with tweepy — cleaner than hand-rolled signing.
+Token stored as: access_token:access_token_secret (Postiz pattern)
 
-API v2: https://developer.twitter.com/en/docs/twitter-api
+Reference: Postiz x.provider.ts
 """
-from typing import Dict, Optional, Tuple
-import requests
-import hashlib
-import hmac
-import base64
-import time
-import urllib.parse
+from typing import Dict, Optional
+import tweepy
 from .base import SocialProvider
 
+
 class XProvider(SocialProvider):
-    """X (Twitter) social media provider."""
-    
+    """X (Twitter) provider using tweepy."""
+
     identifier = 'x'
     name = 'X'
-    oauth_version = 'oauth1'
+    oauth_version = 'oauth1a'
     editor = 'normal'
-    
+
     # X limits
-    max_characters = 280  # Standard tweet
-    max_media = 4  # Images per tweet
-    max_video_duration = 140  # seconds
-    
-    # OAuth 1.0a endpoints
-    request_token_url = 'https://api.twitter.com/oauth/request_token'
-    authorization_url = 'https://api.twitter.com/oauth/authorize'
-    access_token_url = 'https://api.twitter.com/oauth/access_token'
+    max_characters = 280  # Basic tier
+    max_media = 4  # Images
+
+    # OAuth endpoints
+    authorization_url = 'https://api.twitter.com/oauth/authenticate'
     api_base_url = 'https://api.twitter.com/2'
-    
-    # Scopes (for OAuth 2.0, but X uses 1.0a primarily)
-    scopes = []
-    
-    def _get_oauth1_authorization_url(self, state: Optional[str] = None) -> str:
-        """Generate OAuth 1.0a authorization URL.
-        
-        OAuth 1.0a requires three steps:
-        1. Get request token
-        2. Redirect user to authorization URL
-        3. Exchange for access token
-        
-        This method returns step 2 URL.
+
+    def __init__(self, credentials: Dict):
+        super().__init__(credentials)
+        self.client_id = credentials.get('client_id')
+        self.client_secret = credentials.get('client_secret')
+        self.redirect_uri = credentials.get('redirect_uri')
+
+    def _split_token(self, token: str) -> tuple:
+        """Split stored token into access_token and access_token_secret.
+
+        Token is stored as: access_token:access_token_secret
+        (Postiz pattern from x.provider.ts)
         """
-        # Step 1: Get request token
-        request_token = self._get_request_token()
-        
-        # Step 2: Return authorization URL with request token
-        return f"{self.authorization_url}?oauth_token={request_token['oauth_token']}"
-    
-    def _get_request_token(self) -> Dict:
-        """Get OAuth 1.0a request token."""
-        # OAuth 1.0a signature for request token
-        params = {
-            'oauth_callback': self.redirect_uri,
-            'oauth_consumer_key': self.client_id,
-            'oauth_nonce': str(int(time.time())),
-            'oauth_signature_method': 'HMAC-SHA1',
-            'oauth_timestamp': str(int(time.time())),
-            'oauth_version': '1.0'
-        }
-        
-        # Create signature base string
-        signature = self._create_signature(
-            'POST',
-            self.request_token_url,
-            params,
-            self.client_secret,
-            ''  # No token secret yet
-        )
-        
-        params['oauth_signature'] = signature
-        
-        # Build Authorization header
-        auth_header = 'OAuth ' + ', '.join(
-            f'{urllib.parse.quote(k)}="{urllib.parse.quote(v)}"'
-            for k, v in sorted(params.items())
-        )
-        
-        headers = {
-            'Authorization': auth_header
-        }
-        
-        response = requests.post(self.request_token_url, headers=headers)
-        response.raise_for_status()
-        
-        # Parse response (form-encoded)
-        result = {}
-        for pair in response.text.split('&'):
-            key, value = pair.split('=', 1)
-            result[key] = urllib.parse.unquote(value)
-        
-        return result
-    
-    def _exchange_oauth1_code(self, oauth_token: str, oauth_verifier: str) -> Dict:
-        """Exchange OAuth 1.0a verifier for access token.
-        
-        Args:
-            oauth_token: From callback
-            oauth_verifier: From callback
-            
-        Returns:
-            Dict with access_token, refresh_token (X doesn't refresh), etc.
+        parts = token.split(':')
+        if len(parts) == 2:
+            return parts[0], parts[1]
+        # Fallback for tokens stored old way
+        return token, None
+
+    def exchange_code_for_tokens(self, code: str) -> Dict:
+        """Exchange OAuth 1.0a verifier code for access tokens.
+
+        Note: X OAuth 1.0a uses oauth_verifier, not authorization_code.
+        This method is for the callback after user authorizes.
         """
-        # OAuth 1.0a signature for access token
-        params = {
-            'oauth_consumer_key': self.client_id,
-            'oauth_nonce': str(int(time.time())),
-            'oauth_signature_method': 'HMAC-SHA1',
-            'oauth_timestamp': str(int(time.time())),
-            'oauth_token': oauth_token,
-            'oauth_verifier': oauth_verifier,
-            'oauth_version': '1.0'
-        }
-        
-        # Create signature
-        signature = self._create_signature(
-            'POST',
-            self.access_token_url,
-            params,
+        raise NotImplementedError(
+            "X OAuth 1.0a uses a different flow. "
+            "Use generate_auth_url() to get the authorization URL, "
+            "then authenticate() with the verifier code."
+        )
+
+    def generate_auth_url(self) -> Dict:
+        """Generate X OAuth 1.0a authorization URL.
+
+        Returns dict with:
+            url: The authorization URL to visit
+            code_verifier: oauth_token:oauth_token_secret (store for authenticate)
+            state: OAuth state parameter
+        """
+        oauth_handler = tweepy.OAuthHandler(
+            self.client_id,
             self.client_secret,
-            ''  # We don't have token secret yet
+            self.redirect_uri
         )
-        
-        params['oauth_signature'] = signature
-        
-        # Build Authorization header
-        auth_header = 'OAuth ' + ', '.join(
-            f'{urllib.parse.quote(k)}="{urllib.parse.quote(v)}"'
-            for k, v in sorted(params.items())
-        )
-        
-        headers = {
-            'Authorization': auth_header
-        }
-        
-        response = requests.post(self.access_token_url, headers=headers)
-        response.raise_for_status()
-        
-        # Parse response
-        result = {}
-        for pair in response.text.split('&'):
-            key, value = pair.split('=', 1)
-            result[key] = urllib.parse.unquote(value)
-        
-        from datetime import datetime, timedelta
-        
-        # X OAuth 1.0a tokens don't expire, but we'll set a far future date
-        expires_at = datetime.utcnow() + timedelta(days=3650)
-        
+
+        # Get authorization URL
+        try:
+            redirect_url = oauth_handler.get_authorization_url()
+        except tweepy.TweepyException as e:
+            raise Exception(f"Failed to generate auth URL: {e}")
+
+        # Store the request token for later token exchange
+        # tweepy stores oauth_token and oauth_token_secret internally
         return {
-            'access_token': result.get('oauth_token'),
-            'token_secret': result.get('oauth_token_secret'),
+            'url': redirect_url,
+            'code_verifier': f"{oauth_handler.request_token['oauth_token']}:{oauth_handler.request_token['oauth_token_secret']}",
+            'state': oauth_handler.request_token.get('oauth_token', '')
+        }
+
+    def authenticate(self, code_verifier: str) -> Dict:
+        """Exchange authorization code for access tokens.
+
+        Args:
+            code_verifier: The oauth_verifier from the callback URL,
+                         OR the full oauth_token:oauth_token_secret string
+
+        For X OAuth 1.0a, we use the request token to get access tokens.
+        """
+        oauth_token, oauth_token_secret = code_verifier.split(':')
+
+        oauth_handler = tweepy.OAuthHandler(
+            self.client_id,
+            self.client_secret,
+            self.redirect_uri
+        )
+        oauth_handler.request_token = {
+            'oauth_token': oauth_token,
+            'oauth_token_secret': oauth_token_secret
+        }
+
+        # Get the verifier from callback
+        # In a real flow, the callback URL contains oauth_verifier
+        # Here we treat code_verifier as the oauth_verifier directly
+        try:
+            # Exchange request token for access token
+            # X OAuth 1.0a uses get_access_token with the verifier
+            access_token, access_token_secret = oauth_handler.get_access_token(code_verifier)
+        except tweepy.TweepyException as e:
+            raise Exception(f"Failed to get access token: {e}")
+
+        # Build client with access token
+        client = tweepy.Client(
+            consumer_key=self.client_id,
+            consumer_secret=self.client_secret,
+            access_token=access_token,
+            access_token_secret=access_token_secret
+        )
+
+        # Get user info
+        try:
+            user = client.get_user(username=access_token)
+            me = client.get_me()
+            user_data = me.data or {}
+            username = user.data.get('username', '') if user.data else ''
+        except Exception:
+            username = 'unknown'
+
+        return {
+            'access_token': f"{access_token}:{access_token_secret}",  # Postiz pattern
             'refresh_token': None,  # OAuth 1.0a doesn't use refresh tokens
             'token_type': 'OAuth1.0a',
-            'expires_at': expires_at,
-            'scope': '',
-            'account_id': result.get('user_id'),
-            'account_name': result.get('screen_name'),
-            'profile_picture': None  # Would need separate API call
+            'expires_at': None,  # OAuth 1.0a tokens don't expire
+            'account_id': str(user_data.get('id', '')),
+            'account_name': user_data.get('name', ''),
+            'username': username,
+            'profile_picture': user_data.get('profile_image_url', '')
         }
-    
-    def _create_signature(self, method: str, url: str, params: Dict, 
-                         consumer_secret: str, token_secret: str) -> str:
-        """Create OAuth 1.0a HMAC-SHA1 signature.
-        
-        OAuth 1.0a signature is complex. In production, use oauthlib library.
-        """
-        # Percent encode parameters
-        encoded_params = []
-        for key, value in sorted(params.items()):
-            if key == 'oauth_signature':
-                continue
-            encoded_key = urllib.parse.quote(key, safe='')
-            encoded_value = urllib.parse.quote(value, safe='')
-            encoded_params.append(f"{encoded_key}={encoded_value}")
-        
-        param_string = '&'.join(encoded_params)
-        
-        # Create signature base string
-        encoded_method = urllib.parse.quote(method.upper(), safe='')
-        encoded_url = urllib.parse.quote(url, safe='')
-        encoded_params = urllib.parse.quote(param_string, safe='')
-        
-        base_string = f"{encoded_method}&{encoded_url}&{encoded_params}"
-        
-        # Create signing key
-        encoded_consumer_secret = urllib.parse.quote(consumer_secret, safe='')
-        encoded_token_secret = urllib.parse.quote(token_secret, safe='')
-        signing_key = f"{encoded_consumer_secret}&{encoded_token_secret}"
-        
-        # Create HMAC-SHA1 signature
-        signature = hmac.new(
-            signing_key.encode('utf-8'),
-            base_string.encode('utf-8'),
-            hashlib.sha1
-        ).digest()
-        
-        return base64.b64encode(signature).decode('utf-8')
-    
+
+    def refresh_token(self, refresh_token: str) -> Dict:
+        """OAuth 1.0a tokens don't refresh — they're permanent."""
+        return {
+            'access_token': refresh_token,  # Already the access_token:secret combo
+            'refresh_token': None,
+            'expires_at': None
+        }
+
     def post(self, content: str, access_token: str, media_urls: Optional[list] = None,
-             reply_to: Optional[str] = None, 
-             oauth_token_secret: Optional[str] = None,
-             **kwargs) -> Dict:
-        """Create a tweet on X.
-        
+             reply_to: Optional[str] = None, **kwargs) -> Dict:
+        """Post a tweet to X.
+
         Args:
-            content: Tweet text (max 280 chars)
-            access_token: OAuth 1.0a access token (oauth_token)
-            media_urls: Optional list of image URLs to attach (requires upload)
+            content: Tweet text (max 280 chars for basic tier)
+            access_token: Stored as "access_token:access_token_secret"
+            media_urls: List of image URLs to upload and attach
             reply_to: Tweet ID to reply to
-            oauth_token_secret: OAuth 1.0a token secret (required for signing)
-            
+
         Returns:
-            Dict with post_id, url, etc.
+            Dict with post_id, url
         """
-        if not oauth_token_secret:
-            raise ValueError("X posting requires oauth_token_secret (OAuth 1.0a)")
-        
-        # X API v2 posting endpoint
-        url = f"{self.api_base_url}/tweets"
-        
-        # Build request body
-        data = {"text": content[:280]}  # Enforce character limit
-        
+        access_token_val, access_token_secret = self._split_token(access_token)
+
+        # Build tweepy client
+        client = tweepy.Client(
+            consumer_key=self.client_id,
+            consumer_secret=self.client_secret,
+            access_token=access_token_val,
+            access_token_secret=access_token_secret
+        )
+
+        # Upload media if provided
+        media_ids = []
+        if media_urls:
+            # Media upload requires OAuth 1.0a auth
+            auth = tweepy.OAuthHandler(
+                self.client_id,
+                self.client_secret
+            )
+            auth.set_access_token(access_token_val, access_token_secret)
+            api = tweepy.API(auth)
+
+            for media_url in media_urls[:self.max_media]:
+                try:
+                    # Download image
+                    import requests
+                    img_resp = requests.get(media_url)
+                    img_resp.raise_for_status()
+
+                    # Upload to X
+                    media = api.media_upload(
+                        filename=media_url.split('/')[-1],
+                        file=img_resp.content
+                    )
+                    media_ids.append(media.media_id_string)
+                except Exception as e:
+                    print(f"Warning: failed to upload media from {media_url}: {e}")
+
+        # Build tweet params
+        tweet_params = {'text': content[:280]}
+
+        if media_ids:
+            tweet_params['media'] = {'media_ids': media_ids}
+
         if reply_to:
-            data["reply"] = {"in_reply_to_tweet_id": reply_to}
-        
-        headers = {
-            "Authorization": f"Bearer {self.client_secret}",  # Bearer auth for API v2
-            "Content-Type": "application/json"
-        }
-        
-        # OAuth 1.0a signing would go here for user-context requests
-        # For app-only or with proper OAuth 1.0a signing:
-        response = requests.post(url, json=data, headers=headers)
-        
-        if response.status_code == 201:
-            result = response.json()
-            tweet_id = result.get("data", {}).get("id")
+            tweet_params['reply'] = {'in_reply_to_tweet_id': reply_to}
+
+        # Post tweet
+        response = client.create_tweet(**tweet_params)
+
+        if response.data:
+            tweet_id = response.data['id']
             return {
-                "post_id": tweet_id,
-                "url": f"https://x.com/i/status/{tweet_id}" if tweet_id else None,
-                "platform_response": result
+                'post_id': tweet_id,
+                'url': f"https://x.com/i/status/{tweet_id}",
+                'platform_response': response.data
             }
         else:
-            # Try OAuth 1.0a signed request if v2 Bearer fails
-            oauth_headers = self._generate_oauth1_headers(
-                "POST", url, data, self.client_id, self.client_secret,
-                access_token, oauth_token_secret
-            )
-            headers.update(oauth_headers)
-            response = requests.post(url, json=data, headers=headers)
-            
-            if response.status_code == 201:
-                result = response.json()
-                tweet_id = result.get("data", {}).get("id")
-                return {
-                    "post_id": tweet_id,
-                    "url": f"https://x.com/i/status/{tweet_id}" if tweet_id else None,
-                    "platform_response": result
-                }
-            
-            raise Exception(f"X API error: {response.status_code} - {response.text}")
-    
-    def _generate_oauth1_headers(self, method: str, url: str, data: dict,
-                                  consumer_key: str, consumer_secret: str,
-                                  access_token: str, access_token_secret: str) -> Dict:
-        """Generate OAuth 1.0a Authorization header for signed requests."""
-        import time
-        import secrets
-        import hashlib
-        import hmac
-        import base64
-        import urllib.parse
-        
-        # OAuth 1.0a parameters
-        oauth_params = {
-            "oauth_consumer_key": consumer_key,
-            "oauth_nonce": secrets.token_urlsafe(32),
-            "oauth_signature_method": "HMAC-SHA1",
-            "oauth_timestamp": str(int(time.time())),
-            "oauth_token": access_token,
-            "oauth_version": "1.0"
-        }
-        
-        # Create signature
-        signature = self._create_signature(
-            method, url, oauth_params, consumer_secret, access_token_secret
+            raise Exception(f"X post failed: {response}")
+
+    def get_profile(self, access_token: str) -> Dict:
+        """Get X profile information."""
+        access_token_val, access_token_secret = self._split_token(access_token)
+
+        client = tweepy.Client(
+            consumer_key=self.client_id,
+            consumer_secret=self.client_secret,
+            access_token=access_token_val,
+            access_token_secret=access_token_secret
         )
-        oauth_params["oauth_signature"] = signature
-        
-        # Build Authorization header
-        auth_header = "OAuth " + ", ".join(
-            f'{urllib.parse.quote(k, safe="")}="{urllib.parse.quote(v, safe="")}"'
-            for k, v in sorted(oauth_params.items())
-        )
-        
-        return {"Authorization": auth_header}
-    
-    def _create_signature(self, method: str, url: str, params: Dict, 
-                         consumer_secret: str, token_secret: str) -> str:
-        """Create OAuth 1.0a HMAC-SHA1 signature."""
-        import urllib.parse
-        
-        # Percent encode parameters
-        encoded_params = []
-        for key, value in sorted(params.items()):
-            if key == "oauth_signature":
-                continue
-            encoded_key = urllib.parse.quote(key, safe="")
-            encoded_value = urllib.parse.quote(value, safe="")
-            encoded_params.append(f"{encoded_key}={encoded_value}")
-        
-        param_string = "&".join(encoded_params)
-        
-        # Create signature base string
-        encoded_method = urllib.parse.quote(method.upper(), safe="")
-        encoded_url = urllib.parse.quote(url, safe="")
-        encoded_params = urllib.parse.quote(param_string, safe="")
-        
-        base_string = f"{encoded_method}&{encoded_url}&{encoded_params}"
-        
-        # Create signing key
-        encoded_consumer = urllib.parse.quote(consumer_secret, safe="")
-        encoded_token = urllib.parse.quote(token_secret, safe="")
-        signing_key = f"{encoded_consumer}&{encoded_token}"
-        
-        # Create HMAC-SHA1 signature
-        signature = hmac.new(
-            signing_key.encode("utf-8"),
-            base_string.encode("utf-8"),
-            hashlib.sha1
-        ).digest()
-        
-        return base64.b64encode(signature).decode("utf-8")
-    
-    def refresh_access_token(self, refresh_token: str) -> Dict:
-        """OAuth 1.0a doesn't support token refresh.
-        
-        Tokens are permanent until revoked.
-        """
-        raise NotImplementedError("OAuth 1.0a tokens don't expire and can't be refreshed")
-    
-    @classmethod
-    def requires_user_auth(cls) -> bool:
-        return True
-    
-    @classmethod
-    def supports_refresh(cls) -> bool:
-        return False
+
+        me = client.get_me()
+        if me.data:
+            return {
+                'id': me.data.get('id'),
+                'name': me.data.get('name'),
+                'username': me.data.get('username'),
+                'profile_picture': me.data.get('profile_image_url')
+            }
+        return {}
