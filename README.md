@@ -1,8 +1,18 @@
 # SMF Social v2 - Standalone Multi-Tenant Social Media Platform
 
-**Status:** 🚧 In Development (v1 runs parallel on Postiz)  
+**Status:** 🚧 **ON HOLD** — LinkedIn Auth Blocked (2026-03-24)  
 **Architecture:** Multi-tenant, customer-self-hosted capable  
-**Last Updated:** 2026-03-20
+**Last Updated:** 2026-03-24
+
+---
+
+## 🚨 Project On Hold
+
+**As of 2026-03-24, this project is on hold.**
+
+LinkedIn's Developer Portal requires a Company Page to create a developer app — even for personal profile posting. Since LinkedIn was the core use case for replacing Postiz, the project cannot proceed as designed.
+
+**See [STATUS_REPORT.md](./STATUS_REPORT.md) for full details.**
 
 ---
 
