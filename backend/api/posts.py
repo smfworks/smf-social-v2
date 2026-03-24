@@ -145,6 +145,11 @@ def publish_post(
 
     # Decrypt token
     access_token = decrypt_token(integration.access_token)
+    
+    # For X (OAuth 1.0a), we also need the token secret stored in refresh_token
+    oauth_token_secret = None
+    if platform == "x" and integration.refresh_token:
+        oauth_token_secret = decrypt_token(integration.refresh_token)
 
     # Get OAuth app for provider
     oauth_app = integration.oauth_app
@@ -160,11 +165,19 @@ def publish_post(
     try:
         ProviderClass = get_provider_for_platform(platform)
         provider = ProviderClass(credentials)
-        result = provider.post(
-            content=post.content,
-            access_token=access_token,
-            media_urls=post.media_urls
-        )
+        
+        # Build post kwargs
+        post_kwargs = {
+            "content": post.content,
+            "access_token": access_token,
+            "media_urls": post.media_urls
+        }
+        
+        # Add OAuth 1.0a token secret for X
+        if platform == "x" and oauth_token_secret:
+            post_kwargs["oauth_token_secret"] = oauth_token_secret
+        
+        result = provider.post(**post_kwargs)
 
         # Update post
         post.status = "published"

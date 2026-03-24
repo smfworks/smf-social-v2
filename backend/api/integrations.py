@@ -2,7 +2,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from datetime import datetime
-from typing import List
+from typing import List, Optional
 
 from core.database import get_db
 from core.security import decrypt_token, encrypt_token
@@ -44,13 +44,21 @@ def manual_token_entry(
     platform: str,
     tenant_id: str,
     access_token: str,
+    access_token_secret: Optional[str] = None,  # X requires OAuth 1.0a token secret
     db: Session = Depends(get_db)
 ):
-    """Add integration via manual token entry (for testing)."""
+    """Add integration via manual token entry (for testing or direct credentials)."""
     if platform not in SUPPORTED_PLATFORMS:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Platform '{platform}' not supported. Available: {', '.join(SUPPORTED_PLATFORMS)}"
+        )
+
+    # X requires both access_token and access_token_secret (OAuth 1.0a)
+    if platform == "x" and not access_token_secret:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="X (OAuth 1.0a) requires both access_token AND access_token_secret"
         )
 
     # Get or create OAuth app
@@ -71,8 +79,17 @@ def manual_token_entry(
         db.add(oauth_app)
         db.commit()
 
-    # Encrypt token
+    # Encrypt token(s)
     encrypted_token = encrypt_token(access_token)
+    encrypted_secret = encrypt_token(access_token_secret) if access_token_secret else None
+
+    # For X, store token_secret in refresh_token field (it doesn't use OAuth 2.0 refresh)
+    if platform == "x":
+        refresh_token = encrypted_secret  # Store token secret here
+        token_type = "OAuth1.0a"
+    else:
+        refresh_token = None
+        token_type = "Bearer"
 
     # Create integration
     integration = Integration(
@@ -82,7 +99,8 @@ def manual_token_entry(
         account_name=f"@{platform}-manual",
         account_id=f"manual-{platform}-id",
         access_token=encrypted_token,
-        token_type="Bearer",
+        refresh_token=refresh_token,
+        token_type=token_type,
         is_active=True,
         created_at=datetime.utcnow(),
         last_used_at=datetime.utcnow()
