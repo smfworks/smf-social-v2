@@ -7,12 +7,8 @@ interface OAuthAppForm {
   redirect_uri: string
 }
 
+// Pinterest REMOVED 2026-03-23 (business application rejected)
 const PLATFORM_CONFIGS: Record<string, { name: string; icon: string; docsUrl: string }> = {
-  pinterest: {
-    name: 'Pinterest',
-    icon: '📌',
-    docsUrl: 'https://developers.pinterest.com/apps/',
-  },
   linkedin: {
     name: 'LinkedIn',
     icon: '💼',
@@ -22,6 +18,21 @@ const PLATFORM_CONFIGS: Record<string, { name: string; icon: string; docsUrl: st
     name: 'X (Twitter)',
     icon: '🐦',
     docsUrl: 'https://developer.twitter.com/en/portal/projects-and-apps',
+  },
+  instagram: {
+    name: 'Instagram',
+    icon: '📷',
+    docsUrl: 'https://developers.facebook.com/docs/instagram',
+  },
+  facebook: {
+    name: 'Facebook',
+    icon: '📘',
+    docsUrl: 'https://developers.facebook.com/apps',
+  },
+  tiktok: {
+    name: 'TikTok',
+    icon: '🎵',
+    docsUrl: 'https://developers.tiktok.com/doc/login-kit-web',
   },
 }
 

@@ -58,9 +58,19 @@ export function ManualTokenEntry({ platform }: { platform: string }) {
   }
 
   const platformNames: Record<string, string> = {
-    pinterest: 'Pinterest',
     linkedin: 'LinkedIn',
     x: 'X (Twitter)',
+    instagram: 'Instagram',
+    facebook: 'Facebook',
+    tiktok: 'TikTok',
+  }
+
+  const placeholders: Record<string, string> = {
+    linkedin: 'Paste your LinkedIn access token here',
+    x: 'Paste your X/Twitter access token here',
+    instagram: 'Paste your Instagram access token here',
+    facebook: 'Paste your Facebook access token here',
+    tiktok: 'Paste your TikTok access token here',
   }
 
   return (
@@ -90,7 +100,7 @@ export function ManualTokenEntry({ platform }: { platform: string }) {
               type={showToken ? 'text' : 'password'}
               value={token}
               onChange={(e) => setToken(e.target.value)}
-              placeholder="Paste your Pinterest access token here"
+              placeholder={placeholders[platform] || `Paste your ${platform} access token here`}
               required
               className="pr-12"
             />
@@ -104,7 +114,7 @@ export function ManualTokenEntry({ platform }: { platform: string }) {
             </button>
           </div>
           <p className="text-xs mt-2" style={{ color: '#9ca3af' }}>
-            From Pinterest Developer → Your App → Generate Access Token
+            From {platformNames[platform]} Developer Portal → Your App → Generate Access Token
           </p>
         </div>
 
